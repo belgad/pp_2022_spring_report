@@ -1,0 +1,490 @@
+\documentclass{report}
+
+\usepackage[warn]{mathtext}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english, russian]{babel}
+\usepackage[pdftex]{hyperref}
+\usepackage{tempora}
+\usepackage[12pt]{extsizes}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{indentfirst}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{tabularx}
+
+\geometry{a4paper,top=2cm,bottom=2cm,left=2.5cm,right=1.5cm}
+\setlength{\parskip}{0.5cm}
+\setlist{nolistsep, itemsep=0.3cm,parsep=0pt}
+
+\lstset{language=C++,
+  basicstyle=\footnotesize,
+	keywordstyle=\color{blue}\ttfamily,
+	stringstyle=\color{red}\ttfamily,
+	commentstyle=\color{green}\ttfamily,
+	morecomment=[l][\color{red}]{\#}, 
+	tabsize=2,
+	breaklines=true,
+  breakatwhitespace=true,
+  title=\lstname,
+  showspaces=false,
+  showstringspaces=false
+}
+
+\makeatletter
+\renewcommand\@biblabel[1]{#1.\hfil}
+\makeatother
+
+\begin{document}
+
+\begin{titlepage}
+\begin{center}
+Министерство науки и высшего образования Российской Федерации
+\end{center}
+\begin{center}
+Федеральное государственное автономное образовательное учреждение высшего образования \\
+Национальный исследовательский Нижегородский государственный университет им. Н.И. Лобачевского
+\end{center}
+\begin{center}
+Институт информационных технологий, математики и механики
+\end{center}
+\vspace{4em}
+\begin{center}
+\textbf{\LargeОтчет по лабораторной работе} \\
+\end{center}
+\begin{center}
+\textbf{\Large«Вычисление многомерных интегралов с использованием многошаговой схемы (метод прямоугольников)»} \\
+\end{center}
+\vspace{4em}
+\newbox{\lbox}
+\savebox{\lbox}{\hbox{text}}
+\newlength{\maxl}
+\setlength{\maxl}{\wd\lbox}
+\hfill\parbox{7cm}{
+  \hspace*{5cm}\hspace*{-5cm}\textbf{Выполнил:} \\ студент группы 381906-3 \\ Даньшин Г. В. \\
+  \\
+  \hspace*{5cm}\hspace*{-5cm}\textbf{Проверил:}\\ доцент кафедры МОСТ, \\ кандидат технических наук \\ Сысоев А. В.\\
+}
+\vspace{\fill}
+\begin{center} Нижний Новгород \\ 2022 \end{center}
+\end{titlepage}
+
+\setcounter{page}{2}
+
+\tableofcontents
+
+\clearpage
+
+\section*{Введение}
+\addcontentsline{toc}{section}{Введение}
+
+\par Вычисление интегралов, в том числе многомерных - задача, часто встречающаяся в различных областях математики и физики. В большинстве случаев не существует явного алгоритма нахождения точного значения определенного интеграла, поэтому используются численные методы, находящие приближенное значение, одним из которых является метод прямоугольников.
+\par Определенный интеграл - предел интегральных сумм при стремлении длины интервала к нулю, если он существует независимо от разбиения и выбора точек, то есть \( \int^{b}_{a} f(x)dx = \lim\limits_{\Delta x \to 0} \sum\limits_{i=0}^{n-1} f(\xi_i) \Delta x_i \). Идея метода прямоугольников заключается в вычислении суммы \( \sum\limits_{i=0}^{n-1} f(\xi_i) \Delta x_i \) для некоторого \(n\), позволяющего получить достаточную точность. Существуют три основных подвида метода прямоугольников, возникающих в зависимости от выбора точек \( \xi_i \): метод левых прямоугольников, когда для вычисления на каждом интервале берется крайняя левая точка, метод правых прямоугольников, когда берется крайняя правая, и метод центральных прямоугольников, когда берется центральная точка интервала.
+\par Данный алгоритм можно расширить для случая многомерного интеграла: \[ \int \dots \int ^{(b_1, \dots , b_k)}_{(a_1, \dots , a_k)} f(x_1, \dots , x_k) dx_1 \dots dx_k = \sum\limits_{i=0}^{n-1} f(\xi_{1i}, \dots , \xi_{ki}) \Delta x_{1i} \dots \Delta x_{ki} \]
+
+\clearpage
+
+\section*{Постановка задачи}
+\addcontentsline{toc}{section}{Постановка задачи}
+
+\par В данной лабораторной работе необходимо реализовать алгоритм вычисления многомерных интегралов с использованием многошаговой схемы методом прямоугольников. Должны быть реализованы последовательная и параллельные версии данного алгоритма, проверена их корректность, а также произведены измерения эффективности.
+\par Параллельные версии алгоритма должны быть реализованы с использованием технологий OpenMP, TBB, std::thread.
+\par Корректность реализованных алгоритмов проверяется с использованием фреймворка для модульного тестирования Google Test.
+
+\clearpage
+
+\section*{Описание алгоритма}
+\addcontentsline{toc}{section}{Описание алгоритма}
+
+\par Для вычисления определенного интеграла будет использоваться метод левых прямоугольников с постоянным шагом разбиения: \[ \int\dots\int^{(b_1, \dots, b_k)}_{(a_1, \dots, a_k)} f(x_1, \dots, x_k) dx_1 \dots dx_k = ( \sum\limits_{i_1=0}^{n_1-1} \dots \sum\limits_{i_k=0}^{n_k-1} f(\xi_{i_1}, \dots, \xi_{i_k})) \times \Delta x_1 \dots \Delta x_k , \] где \( (a_1, \dots, a_k), (b_1, \dots, b_k) \) - пределы интегрирования, \( \Delta x_j \) - некоторые заранее заданные константы, а \( n_j = \frac{b_j - a_j}{\Delta x_j}, \xi_{i_j} = a_j + i_j \Delta x_j \).
+\par Таким образом, возникает \( n = \prod\limits_{i=1}^k \frac{b_j - a_j}{\Delta x_j}\) одинаковых интервалов разбиения.
+
+\clearpage
+
+\section*{Описание схемы распараллеливания}
+\addcontentsline{toc}{section}{Описание схемы распараллеливания}
+
+\par Распараллеливание вычислений происходит за счет распределения интервалов разбиения между различными потоками. Таким образом, каждый поток вычисляет значение функции только на некоторой области изначального пространства интегрирования, и далее главный поток суммирует получившиеся на каждом потоке значения и домножает полученную сумму на \( \Delta x_j, j=\overline{1,k} \) для получения итогового значения интеграла.
+
+\clearpage
+
+\section*{Описание программной реализации}
+\addcontentsline{toc}{section}{Описание программной реализации}
+
+\par Каждая версия программы состоит из заголовочного файла \emph{integral\_rectangle.hpp} и двух файлов исходного кода \emph{integral\_rectangle.cpp} и \emph{main.cpp}.
+\par В заголовочном файле находятся обьявления функций для вычисления многомерного интеграла методом левых прямоугольников и вспомогательного типа Function, в файле\break \emph{integral\_rectangle.cpp} - реализации данных функций, в файле \emph{main.cpp} - модульные тесты, проверяющие корректность и время работы программы.
+\par Вспомогательный тип Function:
+\begin{lstlisting}
+  using Function = std::function<double(double*)>;
+\end{lstlisting}
+\par Прототип функции для последовательной версии алгоритма:
+\begin{lstlisting}
+  double Integrate(size_t dim, double* step, double* lower, double* upper, Function func);
+\end{lstlisting}
+\par Прототип функции для параллельных версий алгоритма:
+\begin{lstlisting}
+  double Integrate(size_t dim, double* step, double* lower, double* upper, Function func, int thread_num);
+\end{lstlisting}
+\par Параметр dim - размерность заданной функции, step - массив шагов \( \Delta x_j \), lower - массив нижних границ интегрирования \( (a_1, \dots, a_k) \), upper - массив верхних границ интегрирования \( (b_1, \dots, b_k) \), func - функция для интегрирования, thread\_num (в параллельных версиях) - количество используемых потоков.
+\par В версии std::thread дополнительно используется функция для потока, что является необходимым из-за специфики работы библиотеки std::thread:
+\begin{lstlisting}
+  void IntegrateThread(size_t dim, double* step, double* lower, int* size, Function func, int start, int end, double* result);
+\end{lstlisting}
+\par Параметр dim - размерность заданной функции, step - массив шагов \( \Delta x_j \), lower - массив нижних границ интегрирования \( (a_1, \dots, a_k) \), size - массив количеств интервалов разбиения по каждой переменной \( (\frac{b_1 - a_1}{\Delta x_1}, \dots, \frac{b_k - a_k}{\Delta x_k}) \), func - функция для интегрирования, start - номер интервала, с которого поток начинает интегрирование, end - номер интервала, до которого производится интегрирование, result - указатель на переменную, в которую сохраняется результат работы потока.
+
+\clearpage
+
+\section*{Подтверждение корректности}
+\addcontentsline{toc}{section}{Подтверждение корректности}
+
+\par Для подтверждения корректности алгоритмов были написаны 5 тестов с использованием фреймворка Google Test, в которых вычисленное значение сравнивается с правильным ответом. В тестах испольуются три различные функции от 1, 2 и 3 аргументов. Дополнительно были написаны два теста с теми же функциями для вычисления времени работы алгоритмов.
+
+\clearpage
+
+\section*{Результаты экспериментов}
+\addcontentsline{toc}{section}{Результаты экспериментов}
+
+\par Для оценки эффективности работы различных параллельных алгоритмов для каждой конфигурации проводилось по 10 тестов с последующим вычислением средних значений. Тестирование производилось на ПК со следующими характеристиками:
+\begin{itemize}
+\item Процессор: Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz 8C/16T;
+\item Оперативная память: 2x16 ГБ (DDR4), 2-channel, 3000 МГц, Latency: 16-18-18-32;
+\item Операционная система: Windows 11 Pro.
+\end{itemize}
+\par Сборка проекта производилась с помощью утилиты cmake, компилятора Visual Studio 17 2022 версии 19.30.30709 в конфигурации Release.
+
+\par Для проведения тестов эффективности были использованы следующие функции:
+\begin{enumerate}
+  \item \(f(x,y)=xy\) в области от \((0, 0)\) до \((1, 1)\) с шагами \((0.0001, 0.0001)\).
+  \item \(f(x,y,z)=\sqrt{x}y+z\) в области от \((0, 0, 0)\) до \((1, 1, 1)\) с шагами \((0.001, 0.001, 0.001)\).
+\end{enumerate}
+
+\subsection*{Последовательная версия}
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\textwidth}{|X|X|}
+    \hline
+    Номер функции & Время последовательной версии (мкс) \\
+    \hline
+    1 & 920748 \\
+    2 & 14762513 \\
+    \hline
+  \end{tabularx}
+  \caption{Среднее время работы последовательной версии}
+\end{table}
+
+\subsection*{Параллельные версии}
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\textwidth}{|X|X|X|X|X|}
+    \hline
+    Номер функции & Количество потоков & Время OpenMP (мкс) & Время TBB (мкс) & Время std::thread (мкс) \\
+    \hline
+    1 & 2  & 529156 & 589942 & 915393 \\
+    1 & 4  & 331705 & 325087 & 774904 \\
+    1 & 8  & 284764 & 220536 & 639132 \\
+    1 & 16 & 126483 & 129057 & 487443 \\
+    \hline
+    2 & 2  & 8749226 & 7863566 & 19178605 \\
+    2 & 4  & 5990936 & 4275260 & 13995970 \\
+    2 & 8  & 5722747 & 2851055 & 10378749 \\
+    2 & 16 & 2501697 & 2363291 & 6120911  \\
+    \hline
+  \end{tabularx}
+  \caption{Среднее время работы параллельных версий}
+\end{table}
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\textwidth}{|X|X|X|X|X|}
+    \hline
+    Номер функции & Количество потоков & Ускорение OpenMP & Ускорение TBB & Ускорение std::thread \\
+    \hline
+    1 & 2  & 1.74003 & 1.56074 & 1.00585 \\
+    1 & 4  & 2.77580 & 2.83231 & 1.18821 \\
+    1 & 8  & 3.23337 & 4.17504 & 1.44062 \\
+    1 & 16 & 7.27958 & 7.13442 & 1.88893 \\
+    \hline
+    2 & 2  & 1.68729 & 1.87733 & 0.76974 \\
+    2 & 4  & 2.46414 & 3.45301 & 1.05477 \\
+    2 & 8  & 2.57962 & 5.17791 & 1.42238 \\
+    2 & 16 & 5.90100 & 6.24659 & 2.41182 \\
+    \hline
+  \end{tabularx}
+  \caption{Среднее ускорение параллельных версий}
+\end{table}
+
+\clearpage
+
+\section*{Выводы из результатов экспериментов}
+\addcontentsline{toc}{section}{Выводы из результатов экспериментов}
+
+\par Из данных, полученных в результате экспериментов, можно сделать вывод о том, что в большинстве случаев параллельные версии алгоритма работают быстрее последовательной, причем в среднем версия TBB оказывается наиболее эффективной, версия std::thread - наименее эффективной. Это обьясняется тем, что в TBB реализована эффективная динамическая схема расщепления итерационного пространства, а в std::thread необходимо не только явно создавать потоки, но и предварительно вычислять дополнительные параметры для их работы. Также заметно, что эффективность программы зависит от начальных параметров задачи - самой функции и количества интервалов разбиения, и что ускорение параллельных версий меньше числа работающих потоков, так как в системе существует конкуренция с другими запущенными процессами, что не позволяет испольняться одновременно всем запущенным потокам.
+
+\clearpage
+
+\section*{Заключение}
+\addcontentsline{toc}{section}{Заключение}
+
+\par В рамках данной лабораторной работы были реализованы последовательный и параллельные версии (с использованием технологий OpenMP, TBB, std::thread) алгоритма вычисления многомерных интегралов с использованием многошаговой схемы методом левых прямоугольников. Проведенные тесты показали корректность данных реализаций и эффективность параллельных версий в сравнении с последовательной.
+
+\clearpage
+
+\section*{Литература}
+\addcontentsline{toc}{section}{Литература}
+
+\begin{enumerate}
+  \item Определённый интеграл // Википедия. [2022]. Дата обновления: 20.03.2022. URL: \url{https://ru.wikipedia.org/?curid=590246&oldid=120772690} (дата обращения: 22.05.2022).
+  \item Метод прямоугольников // Википедия. [2022]. Дата обновления: 31.03.2022. URL: \url{https://ru.wikipedia.org/?curid=2207638&oldid=121082843} (дата обращения: 22.05.2022).
+  \item OpenMP Library Reference | Microsoft Docs // Microsoft. [2022]. \url{https://docs.microsoft.com/en-us/cpp/parallel/openmp/reference/openmp-library-reference} (дата обращения: 22.05.2022).
+  \item oneAPI Threading Building Blocks (oneTBB) - oneTBB documantation // Intel Corporation. [2022]. \url{https://oneapi-src.github.io/oneTBB/} (дата обращения: 22.05.2022).
+  \item std::thread - cppreference.com // cppreference.com. [2022]. \url{https://en.cppreference.com/w/cpp/thread/thread} (дата обращения: 22.05.2022).
+\end{enumerate}
+
+\clearpage
+
+\section*{Приложение}
+\addcontentsline{toc}{section}{Приложение}
+
+\subsection*{Последовательная версия}
+
+integral\_rectangle.hpp
+\begin{lstlisting}
+  // Copyright 2022 Gleb "belgad" Danshin
+  #ifndef MODULES_TASK_1_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+  #define MODULES_TASK_1_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+  
+  #include <functional>
+  
+  using Function = std::function<double(double*)>;
+  
+  double Integrate(size_t, double*, double*, double*, Function);
+  
+  #endif  // MODULES_TASK_1_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+\end{lstlisting}
+
+integral\_rectangle.cpp
+\begin{lstlisting}
+  // Copyright 2022 Gleb "belgad" Danshin
+  #include "../../../modules/task_1/danshin_g_integral_rectangle/integral_rectangle.hpp"
+  
+  double Integrate(size_t dim, double* step, double* lower, double* upper, Function func) {
+    double result = 0;
+    int total = 1;
+    auto size = new int[dim];
+    for (size_t k = 0; k < dim; ++k) {
+      total *= size[k] = static_cast<int>((upper[k] - lower[k]) / step[k]);
+    }
+    auto curr_point = new double[dim];
+    int j;
+    for (int i = 0; i < total; ++i) {
+      j = i;
+      for (size_t k = 0; k < dim; ++k) {
+        curr_point[k] = lower[k] + static_cast<double>(j % size[k]) * step[k];
+          j /= size[k];
+      }
+      result += func(curr_point);
+    }
+    delete[] size;
+    delete[] curr_point;
+    for (size_t k = 0; k < dim; ++k) {
+      result *= step[k];
+    }
+    return result;
+  }
+\end{lstlisting}
+
+\subsection*{Версия OpenMP}
+
+integral\_rectangle.hpp
+\begin{lstlisting}
+  // Copyright 2022 Gleb "belgad" Danshin
+  #ifndef MODULES_TASK_2_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+  #define MODULES_TASK_2_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+  
+  #include <functional>
+  
+  using Function = std::function<double(double*)>;
+  
+  double Integrate(size_t, double*, double*, double*, Function);
+  
+  #endif  // MODULES_TASK_2_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+\end{lstlisting}
+
+integral\_rectangle.cpp
+\begin{lstlisting}
+  // Copyright 2022 Gleb "belgad" Danshin
+  #include "../../../modules/task_2/danshin_g_integral_rectangle/integral_rectangle.hpp"
+  
+  double Integrate(size_t dim, double* step, double* lower, double* upper, Function func) {
+    double result = 0;
+    int total = 1;
+    auto size = new int[dim];
+    for (size_t k = 0; k < dim; ++k)
+      total *= size[k] = static_cast<int>((upper[k] - lower[k]) / step[k]);
+  #pragma omp parallel shared(total, size)
+    {
+      auto curr_point = new double[dim];
+      int j;
+  #pragma omp for reduction(+ : result)
+      for (int i = 0; i < total; ++i) {
+        j = i;
+        for (size_t k = 0; k < dim; ++k) {
+          curr_point[k] = lower[k] + static_cast<double>(j % size[k]) * step[k];
+          j /= size[k];
+        }
+        result += func(curr_point);
+      }
+      delete[] curr_point;
+    }
+    for (size_t k = 0; k < dim; ++k) {
+      result *= step[k];
+    }
+    delete[] size;
+    return result;
+  }
+\end{lstlisting}
+
+\subsection*{Версия TBB}
+
+integral\_rectangle.hpp
+\begin{lstlisting}
+  // Copyright 2022 Gleb "belgad" Danshin
+  #ifndef MODULES_TASK_3_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+  #define MODULES_TASK_3_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+  
+  #include <functional>
+  
+  using Function = std::function<double(double*)>;
+  
+  double Integrate(size_t, double*, double*, double*, Function, size_t = 0);
+  
+  #endif  // MODULES_TASK_3_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+\end{lstlisting}
+
+integral\_rectangle.cpp
+\begin{lstlisting}
+  // Copyright 2022 Gleb "belgad" Danshin
+  #include <tbb/tbb.h>
+  
+  #include "../../../modules/task_3/danshin_g_integral_rectangle/integral_rectangle.hpp"
+  
+  double Integrate(size_t dim, double* step, double* lower, double* upper, Function func, size_t thread_num) {
+    double result = 0;
+    int total = 1;
+    auto size = new int[dim];
+    for (size_t k = 0; k < dim; ++k)
+      total *= size[k] = static_cast<int>((upper[k] - lower[k]) / step[k]);
+    tbb::task_scheduler_init init{thread_num ? static_cast<int>(thread_num) : -1};
+    result = tbb::parallel_reduce(tbb::blocked_range<int>(0, total), 0.0,
+      [&](tbb::blocked_range<int> range, double temp){
+        auto curr_point = new double[dim];
+        int j;
+        for (int i = range.begin(); i < range.end(); ++i) {
+          j = i;
+          for (size_t k = 0; k < dim; ++k) {
+            curr_point[k] = lower[k] + static_cast<double>(j % size[k]) * step[k];
+            j /= size[k];
+          }
+          temp += func(curr_point);
+        }
+        delete[] curr_point;
+        return temp;
+      }, std::plus<double>());
+    for (size_t k = 0; k < dim; ++k) {
+      result *= step[k];
+    }
+    delete[] size;
+    return result;
+  }
+\end{lstlisting}
+
+\subsection*{Версия std::thread}
+
+integral\_rectangle.hpp
+\begin{lstlisting}
+  // Copyright 2022 Gleb "belgad" Danshin
+  #ifndef MODULES_TASK_4_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+  #define MODULES_TASK_4_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+  
+  #include <functional>
+  #include <thread>
+  
+  using Function = std::function<double(double*)>;
+  
+  double Integrate(size_t dim, double* step, double* lower, double* upper,
+                   Function func,
+                   size_t thread_num = std::thread::hardware_concurrency());
+  void IntegrateThread(size_t dim, double* step, double* lower, int* size,
+                       Function func, int start, int end, double* result);
+  
+  #endif  // MODULES_TASK_4_DANSHIN_G_INTEGRAL_RECTANGLE_INTEGRAL_RECTANGLE_HPP_
+\end{lstlisting}
+
+integral\_rectangle.cpp
+\begin{lstlisting}
+  // Copyright 2022 Gleb "belgad" Danshin
+  #include <thread>
+  
+  #include "../../../modules/task_4/danshin_g_integral_rectangle/integral_rectangle.hpp"
+  
+  double Integrate(size_t dim, double* step, double* lower, double* upper,
+                   Function func, size_t thread_num) {
+    double result = 0.0;
+    int total = 1;
+    auto size = new int[dim];
+    for (size_t k = 0; k < dim; ++k) {
+      total *= size[k] = static_cast<int>((upper[k] - lower[k]) / step[k]);
+    }
+    if (static_cast<size_t>(total) <= thread_num) {
+      return IntegrateSequence(dim, step, lower, upper, func);
+    }
+    std::thread* threads = new std::thread[thread_num];
+    double* threads_result = new double[thread_num];
+    std::fill(threads_result, threads_result + thread_num, 0);
+    int* edges = new int[thread_num + 1];
+    for (size_t i = 0; i < thread_num; ++i) {
+      edges[i] = i * total / thread_num;
+    }
+    edges[thread_num] = total;
+    for (size_t i = 0; i < thread_num; ++i) {
+      threads[i] = std::thread{IntegrateThread, dim, step, lower, size, func,
+                               edges[i], edges[i + 1], threads_result + i};
+    }
+    for (size_t i = 0; i < thread_num; ++i) {
+      threads[i].join();
+      result += threads_result[i];
+    }
+    delete[] threads;
+    delete[] threads_result;
+    delete[] edges;
+    for (size_t k = 0; k < dim; ++k) {
+      result *= step[k];
+    }
+    delete[] size;
+    return result;
+  }
+  
+  void IntegrateThread(size_t dim, double* step, double* lower, int* size,
+                       Function func, int start, int end, double* result) {
+    *result = 0;
+    auto curr_point = new double[dim];
+    for (int i = start; i < end; ++i) {
+      int j = i;
+      for (size_t k = 0; k < dim; ++k) {
+        curr_point[k] = lower[k] + static_cast<double>(j % size[k]) * step[k];
+        j /= size[k];
+      }
+      *result += func(curr_point);
+    }
+    delete[] curr_point;
+  }
+\end{lstlisting}
+
+\end{document}
